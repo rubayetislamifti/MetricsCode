@@ -1,20 +1,13 @@
+import os
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
+# Define folders
+fixation_map_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMaps"
+saliency_map_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMapsOutput"
 
 def auc_shuffled(saliency_map, fixation_map, other_map, n_splits=100, step_size=0.1, to_plot=False):
-    """
-    Computes the shuffled AUC score for saliency prediction.
-
-    :param saliency_map: The saliency map (2D NumPy array)
-    :param fixation_map: The human fixation map (binary 2D NumPy array)
-    :param other_map: Binary fixation map from other images
-    :param n_splits: Number of random splits (default: 100)
-    :param step_size: Step size for threshold sweeping (default: 0.1)
-    :param to_plot: Whether to plot the ROC curve (default: False)
-    :return: AUC score
-    """
     if np.sum(fixation_map) == 0:
         print("No fixationMap")
         return np.nan
@@ -33,7 +26,7 @@ def auc_shuffled(saliency_map, fixation_map, other_map, n_splits=100, step_size=
     F = fixation_map.flatten()
     Oth = other_map.flatten()
 
-    Sth = S[F > 0]  # Saliency values at fixation locations
+    Sth = S[F > 0]
     n_fixations = len(Sth)
 
     # Get random fixation locations from other images
@@ -62,20 +55,32 @@ def auc_shuffled(saliency_map, fixation_map, other_map, n_splits=100, step_size=
 
         auc_scores.append(np.trapz(tp, fp))
 
-    score = np.mean(auc_scores)
+    return np.mean(auc_scores)
 
-    if to_plot:
-        plt.figure(figsize=(10, 5))
-        plt.subplot(1, 2, 1)
-        plt.imshow(saliency_map, cmap='gray')
-        plt.scatter(*np.where(fixation_map > 0)[::-1], c='r', s=5)
-        plt.title("Saliency Map with Fixations")
+# Get all fixation map filenames
+fixation_files = sorted(os.listdir(fixation_map_folder))
 
-        plt.subplot(1, 2, 2)
-        plt.plot(fp, tp, 'b.-')
-        plt.title(f"ROC Curve (AUC: {score:.4f})")
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate")
-        plt.show()
+# Compute AUC Shuffled for all images
+auc_scores = []
+total_images = len(fixation_files)
 
-    return score
+for idx, filename in enumerate(fixation_files):
+    fixation_path = os.path.join(fixation_map_folder, filename)
+    saliency_path = os.path.join(saliency_map_folder, filename)
+
+    if os.path.exists(saliency_path):
+        fixation_map = cv2.imread(fixation_path, cv2.IMREAD_GRAYSCALE)
+        saliency_map = cv2.imread(saliency_path, cv2.IMREAD_GRAYSCALE)
+
+        # Using the same fixation map as the other_map for simplicity
+        score = auc_shuffled(saliency_map, fixation_map, fixation_map)
+
+        if not np.isnan(score):
+            auc_scores.append(score)
+
+    remaining_images = total_images - (idx + 1)
+    print(f"Remaining images: {remaining_images}")
+
+# Compute mean AUC Shuffled score
+mean_auc_shuffled = np.mean(auc_scores) if auc_scores else np.nan
+print(f"Mean AUC Shuffled Score: {mean_auc_shuffled:.4f}")

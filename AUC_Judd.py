@@ -1,21 +1,17 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
+from skimage.io import imread
 from skimage.transform import resize
 
+# Define the folders
+fixation_map_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMaps"
+saliency_map_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMapsOutput"
 
-def auc_judd(saliency_map, fixation_map, jitter=True, to_plot=False):
-    """
-    Computes the AUC Judd score to measure how well the saliency map predicts human fixations.
-
-    :param saliency_map: 2D numpy array, the predicted saliency map
-    :param fixation_map: 2D binary numpy array, the ground truth fixation map
-    :param jitter: Boolean, whether to add small noise to avoid ties
-    :param to_plot: Boolean, whether to plot the ROC curve
-    :return: score (AUC), tp (true positive rates), fp (false positive rates), all_thresholds (used thresholds)
-    """
+# Function to compute AUC Judd
+def auc_judd(saliency_map, fixation_map, jitter=True):
     if np.sum(fixation_map) == 0:
-        print("No fixationMap")
-        return np.nan, None, None, None
+        return np.nan
 
     # Resize saliency_map to match fixation_map if needed
     if saliency_map.shape != fixation_map.shape:
@@ -30,8 +26,7 @@ def auc_judd(saliency_map, fixation_map, jitter=True, to_plot=False):
     if max_val > min_val:
         saliency_map = (saliency_map - min_val) / (max_val - min_val)
     else:
-        print("NaN saliencyMap")
-        return np.nan, None, None, None
+        return np.nan
 
     S = saliency_map.ravel()
     F = fixation_map.ravel()
@@ -52,18 +47,30 @@ def auc_judd(saliency_map, fixation_map, jitter=True, to_plot=False):
         fp[i] = (above_thresh - i) / (Npixels - Nfixations)  # False positive rate
 
     score = np.trapz(tp, fp)
-    all_thresholds = np.concatenate(([1], all_thresholds, [0]))
+    return score
 
-    if to_plot:
-        plt.subplot(1, 2, 1)
-        plt.imshow(saliency_map, cmap='gray')
-        plt.title("SaliencyMap with fixations")
-        y, x = np.where(fixation_map)
-        plt.scatter(x, y, color='red', s=5)
+# Get all fixation map filenames
+fixation_files = sorted(os.listdir(fixation_map_folder))
 
-        plt.subplot(1, 2, 2)
-        plt.plot(fp, tp, '.b-')
-        plt.title(f"Area under ROC curve: {score:.4f}")
-        plt.show()
+# Compute AUC Judd for all images
+auc_scores = []
+total_images = len(fixation_files)
 
-    return score, tp, fp, all_thresholds
+for idx, filename in enumerate(fixation_files):
+    fixation_path = os.path.join(fixation_map_folder, filename)
+    saliency_path = os.path.join(saliency_map_folder, filename)
+
+    if os.path.exists(saliency_path):
+        fixation_map = imread(fixation_path, as_gray=True)  # Read ground truth
+        saliency_map = imread(saliency_path, as_gray=True)  # Read predicted map
+
+        score = auc_judd(saliency_map, fixation_map)
+        if not np.isnan(score):
+            auc_scores.append(score)
+
+    remaining_images = total_images - (idx + 1)
+    print(f"Remaining images: {remaining_images}")
+
+# Compute mean AUC Judd score
+mean_auc = np.mean(auc_scores) if auc_scores else np.nan
+print(f"Mean AUC Judd Score: {mean_auc:.4f}")

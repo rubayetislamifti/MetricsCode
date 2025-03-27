@@ -1,22 +1,23 @@
+import os
 import cv2
 import numpy as np
 from pyemd import emd
-import matplotlib.pyplot as plt
 
+# Define folders
+ground_truth_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMaps"
+saliency_map_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMapsOutput"
 
-def compute_emd(saliency_map, fixation_map, to_plot=False, downsize=32):
+def compute_emd(saliency_map, fixation_map, downsize=32):
     """
     Compute the Earth Mover's Distance (EMD) between a saliency map and a fixation map.
 
     :param saliency_map: Grayscale image representing the saliency map.
     :param fixation_map: Grayscale image representing the fixation map.
-    :param to_plot: Boolean, if True, display the maps and their histograms.
     :param downsize: Factor to resize the images for efficiency.
-    :return: emd_score, distance_matrix, flow_matrix
+    :return: emd_score
     """
     # Resize images for efficiency
-    fixation_map_resized = cv2.resize(fixation_map,
-                                      (fixation_map.shape[1] // downsize, fixation_map.shape[0] // downsize))
+    fixation_map_resized = cv2.resize(fixation_map, (fixation_map.shape[1] // downsize, fixation_map.shape[0] // downsize))
     saliency_map_resized = cv2.resize(saliency_map, (fixation_map_resized.shape[1], fixation_map_resized.shape[0]))
 
     R, C = fixation_map_resized.shape
@@ -40,16 +41,32 @@ def compute_emd(saliency_map, fixation_map, to_plot=False, downsize=32):
     # Compute Earth Mover's Distance
     emd_score = emd(P, Q, D)
 
-    if to_plot:
-        fig, axs = plt.subplots(2, 2, figsize=(10, 10))
-        axs[0, 0].imshow(fixation_map, cmap='gray')
-        axs[0, 0].set_title('Fixation Map')
-        axs[0, 1].imshow(saliency_map, cmap='gray')
-        axs[0, 1].set_title('Saliency Map')
-        axs[1, 0].imshow(fixation_map_resized, cmap='gray')
-        axs[1, 0].set_title(f'EMD Score: {emd_score:.4f}')
-        axs[1, 1].imshow(saliency_map_resized, cmap='gray')
-        axs[1, 1].set_title('Resized Saliency Map')
-        plt.show()
+    return emd_score
 
-    return emd_score, D
+# Get all ground truth filenames
+ground_truth_files = sorted(os.listdir(ground_truth_folder))
+
+# Compute EMD for all images
+emd_scores = []
+total_images = len(ground_truth_files)
+
+for idx, filename in enumerate(ground_truth_files):
+    ground_truth_path = os.path.join(ground_truth_folder, filename)
+    saliency_path = os.path.join(saliency_map_folder, filename)
+
+    if os.path.exists(saliency_path):
+        ground_truth_map = cv2.imread(ground_truth_path, cv2.IMREAD_GRAYSCALE)
+        saliency_map = cv2.imread(saliency_path, cv2.IMREAD_GRAYSCALE)
+
+        # Compute EMD score
+        score = compute_emd(saliency_map, ground_truth_map)
+
+        if not np.isnan(score):
+            emd_scores.append(score)
+
+    remaining_images = total_images - (idx + 1)
+    print(f"Remaining images: {remaining_images}")
+
+# Compute mean EMD score
+mean_emd = np.mean(emd_scores) if emd_scores else np.nan
+print(f"Mean EMD Score: {mean_emd:.4f}")

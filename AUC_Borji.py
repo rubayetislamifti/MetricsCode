@@ -1,27 +1,32 @@
 import numpy as np
 import cv2
+import os
 import matplotlib.pyplot as plt
 
+# Define paths
+ground_truth_dir = r"I:\Saliency4asd\Saliency4asd\TD_FixMaps"
+saliency_maps_dir = r"I:\Saliency4asd\Saliency4asd\TD_FixMapsOutput"
+
+# List all images in both directories
+gt_files = sorted([f for f in os.listdir(ground_truth_dir) if f.endswith(('.png', '.jpg', '.jpeg'))])
+saliency_files = sorted([f for f in os.listdir(saliency_maps_dir) if f.endswith(('.png', '.jpg', '.jpeg'))])
+
+def load_image_as_gray(image_path):
+    """ Load image and convert it to grayscale. """
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        raise ValueError(f"Error loading image: {image_path}")
+    return img
 
 def auc_borji(saliency_map, fixation_map, nsplits=100, step_size=0.1, to_plot=False):
     """
     Compute the AUC Borji score.
-
-    Parameters:
-        saliency_map (numpy.ndarray): The saliency map.
-        fixation_map (numpy.ndarray): The human fixation map (binary matrix).
-        nsplits (int): Number of random splits.
-        step_size (float): Step size for sweeping through saliency map.
-        to_plot (bool): If True, plots the ROC curve.
-
-    Returns:
-        float: AUC Borji score.
     """
     if np.sum(fixation_map) <= 1:
         print("No fixations in fixation_map")
         return np.nan
 
-    # Resize saliency map to match fixation map size if necessary
+    # Resize saliency map to match fixation map size
     if saliency_map.shape != fixation_map.shape:
         saliency_map = cv2.resize(saliency_map, (fixation_map.shape[1], fixation_map.shape[0]))
 
@@ -57,18 +62,31 @@ def auc_borji(saliency_map, fixation_map, nsplits=100, step_size=0.1, to_plot=Fa
 
     score = np.mean(auc_values)
 
-    if to_plot:
-        plt.figure(figsize=(12, 5))
-        plt.subplot(1, 2, 1)
-        plt.imshow(saliency_map, cmap='gray')
-        plt.scatter(*np.where(fixation_map > 0)[::-1], color='red', s=10)
-        plt.title("Saliency Map with Fixations")
-
-        plt.subplot(1, 2, 2)
-        plt.plot(fp, tp, 'b-')
-        plt.title(f"Area under ROC curve: {score:.4f}")
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate")
-        plt.show()
-
     return score
+
+
+# Process each pair of images
+results = {}
+total_images = len(gt_files)
+for idx, (gt_file, saliency_file) in enumerate(zip(gt_files, saliency_files)):
+    gt_path = os.path.join(ground_truth_dir, gt_file)
+    saliency_path = os.path.join(saliency_maps_dir, saliency_file)
+
+    # Load images
+    fixation_map = load_image_as_gray(gt_path)
+    saliency_map = load_image_as_gray(saliency_path)
+
+    # Compute AUC Borji
+    auc_score = auc_borji(saliency_map, fixation_map)
+
+    # Store result
+    results[gt_file] = auc_score
+
+    # Print the progress
+    print(f"Remaining image {idx + 1} of {total_images}")
+
+# Calculate the mean AUC Borji score
+mean_auc_borji = np.nanmean(list(results.values()))
+
+# Print the mean AUC Borji score
+print(f"Mean AUC Borji score: {mean_auc_borji:.4f}")
