@@ -31,8 +31,8 @@ def kl_div(saliency_map, fixation_map):
 
 
 # Define folders
-ground_truth_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMaps"
-saliency_map_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMapsOutput"
+ground_truth_folder = r"I:\Saliency4asd\Saliency4asd\ASD_FixMaps"
+saliency_map_folder = r"I:\Saliency4asd\Saliency4asd\ASD_FixMapsOutput"
 
 # Get all ground truth filenames
 ground_truth_files = sorted(os.listdir(ground_truth_folder))

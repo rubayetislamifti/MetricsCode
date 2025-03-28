@@ -3,8 +3,8 @@ import numpy as np
 import cv2
 
 # Define folders
-ground_truth_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMaps"
-saliency_map_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMapsOutput"
+ground_truth_folder = r"I:\Saliency4asd\Saliency4asd\ASD_FixMaps"
+saliency_map_folder = r"I:\Saliency4asd\Saliency4asd\ASD_FixMapsOutput"
 
 def cc(saliency_map1, saliency_map2):
     """

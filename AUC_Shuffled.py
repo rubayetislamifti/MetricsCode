@@ -4,8 +4,8 @@ import cv2
 import matplotlib.pyplot as plt
 
 # Define folders
-fixation_map_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMaps"
-saliency_map_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMapsOutput"
+fixation_map_folder = r"I:\Saliency4asd\Saliency4asd\ASD_FixMaps"
+saliency_map_folder = r"I:\Saliency4asd\Saliency4asd\ASD_FixMapsOutput"
 
 def auc_shuffled(saliency_map, fixation_map, other_map, n_splits=100, step_size=0.1, to_plot=False):
     if np.sum(fixation_map) == 0:

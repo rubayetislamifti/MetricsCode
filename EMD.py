@@ -1,15 +1,16 @@
 import os
 import cv2
 import numpy as np
-from pyemd import emd
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
 
 # Define folders
-ground_truth_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMaps"
-saliency_map_folder = r"I:\Saliency4asd\Saliency4asd\TD_FixMapsOutput"
+ground_truth_folder = r"I:\Saliency4asd\Saliency4asd\ASD_FixMaps"
+saliency_map_folder = r"I:\Saliency4asd\Saliency4asd\ASD_FixMapsOutput"
 
-def compute_emd(saliency_map, fixation_map, downsize=32):
+def compute_emd_scipy(saliency_map, fixation_map, downsize=32):
     """
-    Compute the Earth Mover's Distance (EMD) between a saliency map and a fixation map.
+    Compute the Earth Mover's Distance (EMD) between a saliency map and a fixation map using scipy.
 
     :param saliency_map: Grayscale image representing the saliency map.
     :param fixation_map: Grayscale image representing the fixation map.
@@ -26,20 +27,24 @@ def compute_emd(saliency_map, fixation_map, downsize=32):
     fixation_map_resized = fixation_map_resized / np.sum(fixation_map_resized)
     saliency_map_resized = saliency_map_resized / np.sum(saliency_map_resized)
 
-    # Compute distance matrix
-    D = np.zeros((R * C, R * C), dtype=np.float64)
-
+    # Get coordinates for each pixel in the resized fixation map
     indices = np.array([(r, c) for r in range(R) for c in range(C)])
-    for i, (r1, c1) in enumerate(indices):
-        for j, (r2, c2) in enumerate(indices):
-            D[i, j] = np.sqrt((r1 - r2) ** 2 + (c1 - c2) ** 2)
 
-    # Convert images to 1D vectors
+    # Flatten the fixation map and saliency map to 1D arrays
     P = fixation_map_resized.flatten().astype(np.float64)
     Q = saliency_map_resized.flatten().astype(np.float64)
 
+    # Compute pairwise distance matrix between all pixels
+    dist_matrix = cdist(indices, indices, metric='euclidean')
+
+    # Compute the cost matrix based on the absolute difference in probabilities
+    cost_matrix = np.outer(P, np.ones_like(Q)) - np.outer(np.ones_like(P), Q)
+
+    # Solve optimal transport problem using linear sum assignment (Hungarian algorithm)
+    row_ind, col_ind = linear_sum_assignment(cost_matrix)
+
     # Compute Earth Mover's Distance
-    emd_score = emd(P, Q, D)
+    emd_score = np.sum(dist_matrix[row_ind, col_ind] * np.abs(cost_matrix[row_ind, col_ind]))
 
     return emd_score
 
@@ -58,8 +63,8 @@ for idx, filename in enumerate(ground_truth_files):
         ground_truth_map = cv2.imread(ground_truth_path, cv2.IMREAD_GRAYSCALE)
         saliency_map = cv2.imread(saliency_path, cv2.IMREAD_GRAYSCALE)
 
-        # Compute EMD score
-        score = compute_emd(saliency_map, ground_truth_map)
+        # Compute EMD score using scipy
+        score = compute_emd_scipy(saliency_map, ground_truth_map)
 
         if not np.isnan(score):
             emd_scores.append(score)

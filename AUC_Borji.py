@@ -4,8 +4,8 @@ import os
 import matplotlib.pyplot as plt
 
 # Define paths
-ground_truth_dir = r"I:\Saliency4asd\Saliency4asd\TD_FixMaps"
-saliency_maps_dir = r"I:\Saliency4asd\Saliency4asd\TD_FixMapsOutput"
+ground_truth_dir = r"I:\Saliency4asd\Saliency4asd\ASD_FixMaps"
+saliency_maps_dir = r"I:\Saliency4asd\Saliency4asd\ASD_FixMapsOutput"
 
 # List all images in both directories
 gt_files = sorted([f for f in os.listdir(ground_truth_dir) if f.endswith(('.png', '.jpg', '.jpeg'))])
